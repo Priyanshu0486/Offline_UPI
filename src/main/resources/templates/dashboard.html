@@ -3,119 +3,679 @@
 <head>
     <meta charset="UTF-8">
     <title>UPI Offline Mesh — Demo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
-        * { box-sizing: border-box; }
+        /* ── Reset & Base ─────────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-primary: #06080d;
+            --bg-secondary: #0c1018;
+            --bg-card: rgba(14, 19, 30, 0.7);
+            --bg-card-hover: rgba(18, 24, 38, 0.85);
+            --bg-surface: rgba(10, 14, 24, 0.6);
+            --border-subtle: rgba(56, 78, 120, 0.25);
+            --border-glow: rgba(88, 130, 255, 0.15);
+            --text-primary: #e8edf5;
+            --text-secondary: #8892a8;
+            --text-muted: #5a6478;
+            --accent-blue: #5b8cff;
+            --accent-blue-dim: rgba(91, 140, 255, 0.12);
+            --accent-green: #34d97f;
+            --accent-green-dim: rgba(52, 217, 127, 0.1);
+            --accent-red: #f85149;
+            --accent-red-dim: rgba(248, 81, 73, 0.1);
+            --accent-amber: #f0b232;
+            --accent-amber-dim: rgba(240, 178, 50, 0.1);
+            --accent-purple: #b385ff;
+            --gradient-primary: linear-gradient(135deg, #5b8cff 0%, #b385ff 100%);
+            --gradient-green: linear-gradient(135deg, #34d97f 0%, #2bb89e 100%);
+            --gradient-red: linear-gradient(135deg, #f85149 0%, #e03030 100%);
+            --gradient-amber: linear-gradient(135deg, #f0b232 0%, #e89820 100%);
+            --radius-sm: 8px;
+            --radius-md: 14px;
+            --radius-lg: 20px;
+            --shadow-card: 0 4px 24px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2);
+            --shadow-glow-blue: 0 0 30px rgba(91, 140, 255, 0.08);
+            --shadow-glow-green: 0 0 20px rgba(52, 217, 127, 0.08);
+            --transition-fast: 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            margin: 0; padding: 24px; background: #0d1117; color: #e6edf3;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
         }
-        h1 { margin-top: 0; color: #f0f6fc; }
-        h2 { color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 4px; margin-top: 32px; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        .grid { display: grid; gap: 16px; }
-        .grid-2 { grid-template-columns: 1fr 1fr; }
-        .grid-3 { grid-template-columns: repeat(3, 1fr); }
-        .card {
-            background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px;
+
+        /* ── Animated Background ──────────────────────────── */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 600px 400px at 15% 10%, rgba(91, 140, 255, 0.06) 0%, transparent 70%),
+                radial-gradient(ellipse 500px 350px at 85% 80%, rgba(179, 133, 255, 0.05) 0%, transparent 70%),
+                radial-gradient(ellipse 400px 300px at 50% 50%, rgba(52, 217, 127, 0.03) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+            animation: bgShift 20s ease-in-out infinite alternate;
         }
-        .device {
-            border: 1px solid #30363d; border-radius: 6px; padding: 12px; margin-bottom: 8px;
-            background: #0d1117;
+
+        @keyframes bgShift {
+            0%   { opacity: 0.8; transform: scale(1); }
+            50%  { opacity: 1;   transform: scale(1.05); }
+            100% { opacity: 0.8; transform: scale(1); }
         }
-        .device.bridge { border-color: #2ea043; background: #052e16; }
-        .device.offline { opacity: 0.85; }
-        .badge {
-            display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 10px;
-            font-weight: 600; margin-left: 8px;
+
+        /* ── Grid Pattern Overlay ─────────────────────────── */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(91, 140, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(91, 140, 255, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+            z-index: 0;
         }
-        .badge-online { background: #2ea043; color: white; }
-        .badge-offline { background: #6e7681; color: white; }
-        .packet-id {
-            font-family: 'Consolas', 'Monaco', monospace; font-size: 11px;
-            background: #21262d; padding: 2px 6px; border-radius: 3px; margin: 2px;
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 32px 28px 60px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ── Header ───────────────────────────────────────── */
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
             display: inline-block;
+            margin-bottom: 6px;
         }
-        button {
-            background: #238636; color: white; border: none; padding: 8px 16px;
-            border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;
-            margin: 4px;
+
+        h2 {
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-top: 0;
+            margin-bottom: 16px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
-        button:hover { background: #2ea043; }
-        button.danger { background: #da3633; }
-        button.danger:hover { background: #f85149; }
-        button.secondary { background: #1f6feb; }
-        button.secondary:hover { background: #388bfd; }
-        input, select {
-            background: #0d1117; color: #e6edf3; border: 1px solid #30363d;
-            border-radius: 4px; padding: 6px 10px; font-size: 14px; margin: 4px;
+
+        .subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            white-space: nowrap;
         }
-        table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        th, td { text-align: left; padding: 8px; border-bottom: 1px solid #30363d; }
-        th { color: #8b949e; font-weight: 600; font-size: 12px; text-transform: uppercase; }
-        .status-SETTLED { color: #56d364; font-weight: 600; }
-        .status-REJECTED { color: #f85149; font-weight: 600; }
-        .status-DUPLICATE_DROPPED { color: #d29922; font-weight: 600; }
-        .status-INVALID { color: #f85149; font-weight: 600; }
-        #log {
-            background: #010409; color: #7ee787; padding: 12px; border-radius: 6px;
-            font-family: 'Consolas', 'Monaco', monospace; font-size: 12px;
-            max-height: 220px; overflow-y: auto; white-space: pre-wrap;
-            border: 1px solid #30363d;
+
+        /* ── Cards ─────────────────────────────────────────── */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            box-shadow: var(--shadow-card);
+            transition: border-color var(--transition-smooth), box-shadow var(--transition-smooth);
         }
-        .controls { background: #161b22; padding: 16px; border-radius: 8px;
-                    border: 1px solid #30363d; margin-bottom: 16px; }
+
+        .card:hover {
+            border-color: var(--border-glow);
+            box-shadow: var(--shadow-card), var(--shadow-glow-blue);
+        }
+
+        /* ── Grid Layout ──────────────────────────────────── */
+        .grid { display: grid; gap: 20px; }
+        .grid-2 { grid-template-columns: 1fr 1fr; }
+
+        @media (max-width: 900px) {
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+
+        /* ── Controls Panel ────────────────────────────────── */
+        .controls {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            margin-bottom: 24px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            box-shadow: var(--shadow-card);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .controls::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: var(--gradient-primary);
+            opacity: 0.7;
+        }
+
+        .controls h3 {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+
+        .step-row {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 14px 16px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            margin-bottom: 12px;
+            transition: background var(--transition-fast), border-color var(--transition-fast);
+        }
+
+        .step-row:hover {
+            background: rgba(14, 20, 34, 0.8);
+            border-color: var(--border-glow);
+        }
+
+        .step-row:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Compose payment — stacked layout */
+        .step-row.step-compose {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .step-compose-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .step-compose-fields {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-left: 38px;
+            margin-top: 4px;
+        }
+
+        .field-group {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .field-group .field-label {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--text-muted);
+        }
+
         .step-num {
-            display: inline-block; background: #58a6ff; color: white;
-            border-radius: 50%; width: 24px; height: 24px; text-align: center;
-            line-height: 24px; font-weight: 600; margin-right: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--gradient-primary);
+            color: white;
+            font-size: 13px;
+            font-weight: 700;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(91, 140, 255, 0.25);
         }
-        .balance { font-family: 'Consolas', monospace; color: #56d364; font-weight: 600; }
-        .small { font-size: 12px; color: #8b949e; }
+
+        .step-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .step-label .hint {
+            font-weight: 400;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .arrow-icon {
+            color: var(--text-muted);
+            font-size: 16px;
+        }
+
+        /* ── Buttons ───────────────────────────────────────── */
+        button {
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            border: none;
+            padding: 9px 18px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        button:active {
+            transform: scale(0.97);
+        }
+
+        /* Green primary */
+        button:not(.danger):not(.secondary) {
+            background: #2ea043;
+            color: white;
+            box-shadow: 0 2px 10px rgba(52, 217, 127, 0.2);
+        }
+        button:not(.danger):not(.secondary):hover {
+            box-shadow: 0 4px 18px rgba(52, 217, 127, 0.35);
+            transform: translateY(-1px);
+        }
+
+        /* Blue secondary */
+        button.secondary {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: 0 2px 10px rgba(91, 140, 255, 0.2);
+        }
+        button.secondary:hover {
+            box-shadow: 0 4px 18px rgba(91, 140, 255, 0.35);
+            transform: translateY(-1px);
+        }
+
+        /* Red danger */
+        button.danger {
+            background: var(--gradient-red);
+            color: white;
+            box-shadow: 0 2px 10px rgba(248, 81, 73, 0.15);
+        }
+        button.danger:hover {
+            box-shadow: 0 4px 18px rgba(248, 81, 73, 0.3);
+            transform: translateY(-1px);
+        }
+
+        /* ── Form Inputs ───────────────────────────────────── */
+        input, select {
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: 8px 12px;
+            transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+            outline: none;
+        }
+
+        input:focus, select:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px var(--accent-blue-dim);
+        }
+
+        select {
+            cursor: pointer;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            padding-right: 28px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238892a8' viewBox='0 0 16 16'%3E%3Cpath d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+        }
+
+        /* ── Mesh Device Cards ─────────────────────────────── */
+        .device {
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            background: var(--bg-surface);
+            transition: all var(--transition-smooth);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .device::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 3px;
+            border-radius: 0 2px 2px 0;
+            background: var(--text-muted);
+            transition: background var(--transition-smooth);
+        }
+
+        .device:hover {
+            border-color: var(--border-glow);
+            background: rgba(14, 20, 34, 0.7);
+            transform: translateX(3px);
+        }
+
+        .device strong {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .device.bridge {
+            border-color: rgba(52, 217, 127, 0.2);
+            background: rgba(52, 217, 127, 0.04);
+        }
+
+        .device.bridge::before {
+            background: var(--accent-green);
+            box-shadow: 0 0 8px rgba(52, 217, 127, 0.4);
+        }
+
+        .device.bridge:hover {
+            border-color: rgba(52, 217, 127, 0.35);
+            background: rgba(52, 217, 127, 0.07);
+        }
+
+        .device.offline { opacity: 0.9; }
+
+        .device.offline::before {
+            background: var(--text-muted);
+        }
+
+        /* ── Badges ────────────────────────────────────────── */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 20px;
+            margin-left: 10px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .badge-online {
+            background: var(--accent-green-dim);
+            color: var(--accent-green);
+            border: 1px solid rgba(52, 217, 127, 0.2);
+        }
+
+        .badge-offline {
+            background: rgba(90, 100, 120, 0.15);
+            color: var(--text-muted);
+            border: 1px solid rgba(90, 100, 120, 0.2);
+        }
+
+        /* ── Packet IDs ────────────────────────────────────── */
+        .packet-id {
+            font-family: 'JetBrains Mono', 'Consolas', monospace;
+            font-size: 11px;
+            font-weight: 500;
+            background: rgba(91, 140, 255, 0.08);
+            color: var(--accent-blue);
+            border: 1px solid rgba(91, 140, 255, 0.12);
+            padding: 2px 8px;
+            border-radius: 6px;
+            margin: 3px 3px 3px 0;
+            display: inline-block;
+            transition: background var(--transition-fast);
+        }
+
+        .packet-id:hover {
+            background: rgba(91, 140, 255, 0.15);
+        }
+
+        /* ── Tables ────────────────────────────────────────── */
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 13px;
+        }
+
+        thead th {
+            color: var(--text-muted);
+            font-weight: 700;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            padding: 10px 14px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-subtle);
+            background: var(--bg-surface);
+            position: sticky;
+            top: 0;
+        }
+
+        thead th:first-child { border-radius: var(--radius-sm) 0 0 0; }
+        thead th:last-child  { border-radius: 0 var(--radius-sm) 0 0; }
+
+        tbody td {
+            padding: 10px 14px;
+            border-bottom: 1px solid rgba(56, 78, 120, 0.1);
+            transition: background var(--transition-fast);
+        }
+
+        tbody tr {
+            transition: background var(--transition-fast);
+        }
+
+        tbody tr:hover td {
+            background: rgba(91, 140, 255, 0.04);
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* ── Status Labels ─────────────────────────────────── */
+        .status-SETTLED {
+            color: var(--accent-green);
+            font-weight: 700;
+            text-shadow: 0 0 12px rgba(52, 217, 127, 0.3);
+        }
+
+        .status-REJECTED {
+            color: var(--accent-red);
+            font-weight: 700;
+        }
+
+        .status-DUPLICATE_DROPPED {
+            color: var(--accent-amber);
+            font-weight: 700;
+        }
+
+        .status-INVALID {
+            color: var(--accent-red);
+            font-weight: 700;
+        }
+
+        /* ── Balance ───────────────────────────────────────── */
+        .balance {
+            font-family: 'JetBrains Mono', 'Consolas', monospace;
+            color: var(--accent-green);
+            font-weight: 600;
+        }
+
+        /* ── Activity Log ──────────────────────────────────── */
+        #log {
+            background: var(--bg-primary);
+            color: var(--accent-green);
+            font-family: 'JetBrains Mono', 'Consolas', monospace;
+            font-size: 12px;
+            line-height: 1.7;
+            padding: 16px;
+            border-radius: var(--radius-md);
+            max-height: 240px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            border: 1px solid var(--border-subtle);
+            scrollbar-width: thin;
+            scrollbar-color: rgba(91, 140, 255, 0.2) transparent;
+        }
+
+        #log::-webkit-scrollbar { width: 6px; }
+        #log::-webkit-scrollbar-track { background: transparent; }
+        #log::-webkit-scrollbar-thumb {
+            background: rgba(91, 140, 255, 0.2);
+            border-radius: 3px;
+        }
+        #log::-webkit-scrollbar-thumb:hover {
+            background: rgba(91, 140, 255, 0.35);
+        }
+
+        /* ── Utility ───────────────────────────────────────── */
+        .small {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* ── Section Spacing ──────────────────────────────── */
+        .section-gap {
+            margin-top: 20px;
+        }
+
+        /* ── Fade-In Animation ─────────────────────────────── */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .container > * {
+            animation: fadeInUp 0.5s ease-out both;
+        }
+
+        .container > :nth-child(1) { animation-delay: 0s; }
+        .container > :nth-child(2) { animation-delay: 0.08s; }
+        .container > :nth-child(3) { animation-delay: 0.16s; }
+        .container > :nth-child(4) { animation-delay: 0.24s; }
+        .container > :nth-child(5) { animation-delay: 0.32s; }
+
+        /* ── Pulse for live indicator ──────────────────────── */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50%      { opacity: 0.4; }
+        }
+
+        .live-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            margin-right: 8px;
+            animation: pulse 2s ease-in-out infinite;
+            box-shadow: 0 0 8px rgba(52, 217, 127, 0.5);
+        }
     </style>
 </head>
 <body>
 <div class="container">
-    <h1>📡 UPI Offline Mesh — Live Demo</h1>
-    <p class="small">
-        Send money in a basement with zero internet. Encrypted packets gossip from phone to phone
-        until one with 4G reaches the backend.
-    </p>
+    <div class="page-header">
+        <h1>📡 UPI Offline Mesh — Live Demo</h1>
+        <p class="subtitle">
+            <span class="live-dot"></span>
+            Send money in a basement with zero internet. Encrypted packets gossip from phone to phone
+            until one with 4G reaches the backend.
+        </p>
+    </div>
 
     <div class="controls">
-        <h3 style="margin-top:0">🎬 Demo Flow</h3>
+        <h3>🎬 Demo Flow</h3>
 
-        <div>
-            <span class="step-num">1</span><strong>Compose payment</strong> (simulates sender phone)
-            <br>
-            <select id="senderVpa">
-                <option>alice@demo</option>
-                <option>bob@demo</option>
-                <option>carol@demo</option>
-            </select>
-            →
-            <select id="receiverVpa">
-                <option>bob@demo</option>
-                <option>carol@demo</option>
-                <option>alice@demo</option>
-                <option>dave@demo</option>
-            </select>
-            ₹<input type="number" id="amount" value="500" style="width: 100px">
-            PIN <input type="text" id="pin" value="1234" style="width: 80px" maxlength="4">
-            <button onclick="sendPacket()">📤 Inject into Mesh</button>
+        <div class="step-row step-compose">
+            <div class="step-compose-header">
+                <span class="step-num">1</span>
+                <span class="step-label">Compose payment <span class="hint">(simulates sender phone)</span></span>
+            </div>
+            <div class="step-compose-fields">
+                <div class="field-group">
+                    <span class="field-label">Sender</span>
+                    <select id="senderVpa">
+                        <option>alice@demo</option>
+                        <option>bob@demo</option>
+                        <option>carol@demo</option>
+                    </select>
+                </div>
+                <span class="arrow-icon">→</span>
+                <div class="field-group">
+                    <span class="field-label">Receiver</span>
+                    <select id="receiverVpa">
+                        <option>bob@demo</option>
+                        <option>carol@demo</option>
+                        <option>alice@demo</option>
+                        <option>dave@demo</option>
+                    </select>
+                </div>
+                <div class="field-group">
+                    <span class="field-label">Amount (₹)</span>
+                    <input type="number" id="amount" value="500" style="width: 100px">
+                </div>
+                <div class="field-group">
+                    <span class="field-label">PIN</span>
+                    <input type="text" id="pin" value="1234" style="width: 80px" maxlength="4">
+                </div>
+                <button onclick="sendPacket()">📤 Inject into Mesh</button>
+            </div>
         </div>
 
-        <div style="margin-top: 16px">
-            <span class="step-num">2</span><strong>Gossip</strong> — packets hop device-to-device
+        <div class="step-row">
+            <span class="step-num">2</span>
+            <span class="step-label">Gossip <span class="hint">— packets hop device-to-device</span></span>
             <button class="secondary" onclick="gossip()">🔄 Run Gossip Round</button>
         </div>
 
-        <div style="margin-top: 16px">
-            <span class="step-num">3</span><strong>Bridge node walks outside, hits 4G</strong>
+        <div class="step-row">
+            <span class="step-num">3</span>
+            <span class="step-label">Bridge node walks outside, hits 4G</span>
             <button class="secondary" onclick="flushBridges()">📡 Bridges Upload to Backend</button>
             <span class="small">(parallel — exercises idempotency)</span>
         </div>
 
-        <div style="margin-top: 16px">
+        <div class="step-row">
             <button class="danger" onclick="resetMesh()">🗑 Reset Mesh + Cache</button>
         </div>
     </div>
@@ -132,11 +692,11 @@
                 <thead><tr><th>VPA</th><th>Holder</th><th>Balance</th></tr></thead>
                 <tbody></tbody>
             </table>
-            <p class="small" id="cacheInfo"></p>
+            <p class="small" id="cacheInfo" style="margin-top: 12px;"></p>
         </div>
     </div>
 
-    <div class="card" style="margin-top: 16px">
+    <div class="card section-gap">
         <h2>📜 Transaction Ledger</h2>
         <table id="tx-table">
             <thead><tr>
@@ -147,7 +707,7 @@
         </table>
     </div>
 
-    <div class="card" style="margin-top: 16px">
+    <div class="card section-gap">
         <h2>🪵 Activity Log</h2>
         <div id="log"></div>
     </div>
@@ -203,7 +763,7 @@ async function sendPacket() {
         amount: parseFloat(document.getElementById('amount').value),
         pin: document.getElementById('pin').value,
         ttl: 5,
-        startDevice: 'phone-alice'
+        startDevice: 'phone-' + document.getElementById('senderVpa').value.split('@')[0]
     };
     const r = await fetch('/api/demo/send', {
         method: 'POST', headers: {'Content-Type': 'application/json'},
