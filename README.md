@@ -1,6 +1,9 @@
 # UPI Offline Mesh — Demo
 
+
 <img width="1153" height="856" alt="image" src="https://github.com/user-attachments/assets/f4873d4a-9c92-4266-b267-8861ec1eef53" />
+
+
 
 
 A Spring Boot backend that demonstrates **offline UPI payments routed through a Bluetooth-style mesh network**. You're in a basement with zero connectivity. You send your friend ₹500. Your phone encrypts the payment, broadcasts it to nearby phones, and the packet hops device-to-device until *some* phone walks outside, gets 4G, and silently uploads it to this backend. The backend decrypts, deduplicates, and settles.
