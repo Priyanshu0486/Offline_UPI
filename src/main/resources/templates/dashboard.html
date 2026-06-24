@@ -468,6 +468,106 @@
             background: rgba(91, 140, 255, 0.15);
         }
 
+        /* ── Mesh Graph ────────────────────────────────────── */
+        .mesh-graph-container {
+            position: relative;
+            width: 100%;
+            height: 320px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        #mesh-edges {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .mesh-edge {
+            stroke: rgba(56, 78, 120, 0.4);
+            stroke-width: 1.5;
+            transition: stroke var(--transition-smooth);
+        }
+
+        .mesh-edge.gossiping {
+            stroke: var(--accent-blue);
+            stroke-dasharray: 6 6;
+            animation: flow 0.5s linear infinite;
+            opacity: 0.8;
+            stroke-width: 2;
+        }
+
+        @keyframes flow {
+            from { stroke-dashoffset: 12; }
+            to { stroke-dashoffset: 0; }
+        }
+
+        .graph-node {
+            position: absolute;
+            width: 56px;
+            height: 56px;
+            margin-left: -28px;
+            margin-top: -28px;
+            border-radius: 50%;
+            background: var(--bg-card);
+            border: 2px solid rgba(56, 78, 120, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: all var(--transition-smooth);
+            z-index: 10;
+            backdrop-filter: blur(8px);
+        }
+
+        .graph-node.bridge {
+            border-color: var(--accent-green);
+            box-shadow: 0 0 15px rgba(52, 217, 127, 0.2);
+            background: rgba(5, 46, 22, 0.6);
+        }
+
+        .graph-node .icon {
+            font-size: 18px;
+            margin-bottom: 2px;
+        }
+
+        .graph-node .label {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-align: center;
+            line-height: 1.1;
+        }
+
+        .graph-node .packet-badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: var(--accent-blue);
+            color: white;
+            font-size: 11px;
+            font-weight: 800;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 6px rgba(91, 140, 255, 0.4);
+            transform: scale(0);
+            transition: transform var(--transition-fast) cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .graph-node .packet-badge.has-packets {
+            transform: scale(1);
+        }
+
         /* ── Tables ────────────────────────────────────────── */
         table {
             width: 100%;
@@ -720,19 +820,55 @@ function log(msg) {
 }
 
 async function refresh() {
-    // Mesh state
+    // Mesh state (Graph visualization)
     const m = await fetch('/api/mesh/state').then(r => r.json());
-    const devicesDiv = document.getElementById('devices');
-    devicesDiv.innerHTML = m.devices.map(d => `
-        <div class="device ${d.hasInternet ? 'bridge' : 'offline'}">
-            <strong>${d.deviceId}</strong>
-            <span class="badge ${d.hasInternet ? 'badge-online' : 'badge-offline'}">
-                ${d.hasInternet ? '🌐 4G' : '🚫 OFFLINE'}
-            </span>
-            <span class="small">holding ${d.packetCount} packet(s)</span>
-            <div>${d.packetIds.map(id => `<span class="packet-id">${id}</span>`).join('')}</div>
+    const container = document.getElementById('devices');
+    
+    let nodesHtml = '';
+    let edgesHtml = '';
+    
+    const devices = m.devices;
+    const n = devices.length;
+
+    // Use a percentage-based 100x100 coordinate system
+    const centerX = 50;
+    const centerY = 50;
+    const radius = 35; // leaves room for nodes at the edges
+
+    const positions = [];
+    devices.forEach((d, i) => {
+        const angle = (i * 2 * Math.PI) / n - Math.PI / 2;
+        const x = centerX + radius * Math.cos(angle);
+        const y = centerY + radius * Math.sin(angle);
+        positions.push({x, y});
+        
+        let shortName = d.deviceId.replace('phone-', '');
+        shortName = shortName.charAt(0).toUpperCase() + shortName.slice(1);
+        const icon = d.hasInternet ? '🌐' : '📱';
+        
+        nodesHtml += `
+            <div class="graph-node ${d.hasInternet ? 'bridge' : ''}" style="left: ${x}%; top: ${y}%;">
+                <div class="packet-badge ${d.packetCount > 0 ? 'has-packets' : ''}">${d.packetCount}</div>
+                <div class="icon">${icon}</div>
+                <div class="label">${shortName}</div>
+            </div>
+        `;
+    });
+
+    // Draw fully connected edges
+    for (let i = 0; i < n; i++) {
+        for (let j = i + 1; j < n; j++) {
+            edgesHtml += `<line class="mesh-edge" x1="${positions[i].x}%" y1="${positions[i].y}%" x2="${positions[j].x}%" y2="${positions[j].y}%"></line>`;
+        }
+    }
+
+    container.innerHTML = `
+        <div class="mesh-graph-container">
+            <svg id="mesh-edges" width="100%" height="100%">${edgesHtml}</svg>
+            <div id="mesh-nodes">${nodesHtml}</div>
         </div>
-    `).join('');
+    `;
+
     document.getElementById('cacheInfo').textContent =
         `Idempotency cache size: ${m.idempotencyCacheSize}`;
 
@@ -775,9 +911,18 @@ async function sendPacket() {
 }
 
 async function gossip() {
+    // Add visual animation to the graph edges
+    const edges = document.querySelectorAll('.mesh-edge');
+    edges.forEach(e => e.classList.add('gossiping'));
+
     const r = await fetch('/api/mesh/gossip', {method: 'POST'}).then(r => r.json());
     log(`🔄 Gossip: ${r.transfers} transfer(s) — ${JSON.stringify(r.deviceCounts)}`);
     refresh();
+
+    // Remove animation class after visual effect
+    setTimeout(() => {
+        edges.forEach(e => e.classList.remove('gossiping'));
+    }, 600);
 }
 
 async function flushBridges() {
